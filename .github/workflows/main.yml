@@ -1,0 +1,57 @@
+name: Test, Bump, and Publish
+
+on:
+  push:
+    branches:
+      - main   # only run on main branch
+
+jobs:
+  test-build-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[test]
+          pip install build twine
+
+      - name: Run tests
+        run: |
+          python -m unittest discover -s tests
+
+      - name: Bump version
+        id: bump_version
+        run: |
+          VERSION_FILE="pyproject.toml"
+          OLD_VER=$(grep '^version =' $VERSION_FILE | awk -F'"' '{print $2}')
+          echo "Old version: $OLD_VER"
+          # increase last number by 0.1
+          MAJOR=$(echo $OLD_VER | cut -d. -f1)
+          MINOR=$(echo $OLD_VER | cut -d. -f2)
+          PATCH=$(echo $OLD_VER | cut -d. -f3)
+          NEW_PATCH=$(awk "BEGIN {printf \"%.1f\", $PATCH+0.1}")
+          NEW_VER="$MAJOR.$MINOR.$NEW_PATCH"
+          echo "New version: $NEW_VER"
+          sed -i "s/^version = \".*\"/version = \"$NEW_VER\"/" $VERSION_FILE
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git commit -am "Bump version to $NEW_VER"
+          git tag "v$NEW_VER"
+          git push origin main --tags
+
+      - name: Build package
+        run: python -m build
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: python -m twine upload dist/*
