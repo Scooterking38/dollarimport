@@ -6,6 +6,10 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write             # allow pushing commits and tags
+  id-token: write             # required for some actions (optional)
+  
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
@@ -36,9 +40,11 @@ jobs:
           echo "New version: $NEW_VER"
           sed -i "s/^version = \".*\"/version = \"$NEW_VER\"/" $VERSION_FILE
           git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config user.email "github-actions@users.noreply.github.com"
           git commit -am "Bump version to $NEW_VER"
           git tag "v$NEW_VER"
+          # push using GITHUB_TOKEN
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           git push origin main --tags
 
       - name: Build package
