@@ -6,6 +6,6 @@ build-backend = "setuptools.build_meta"
 name = "dollarimport"
 version = "0.1.0.3"
 description = "Enables ${var} syntax in Python using exec and globals"
-authors = [{name="Your Name"}]
+authors = [{name="Elijah Morgan"}]
 readme = "README.md"
 requires-python = ">=3.8"
