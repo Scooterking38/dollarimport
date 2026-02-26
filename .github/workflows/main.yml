@@ -1,16 +1,18 @@
 name: Test, Bump, and Publish
 
 on:
+  workflow_dispatch: {}          # allows manual run
   push:
     branches:
-      - main   # only run on main branch
+      - main
 
 jobs:
   test-build-publish:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -34,10 +36,9 @@ jobs:
           OLD_VER=$(grep '^version =' $VERSION_FILE | awk -F'"' '{print $2}')
           echo "Old version: $OLD_VER"
           # increase last number by 0.1
-          MAJOR=$(echo $OLD_VER | cut -d. -f1)
-          MINOR=$(echo $OLD_VER | cut -d. -f2)
-          PATCH=$(echo $OLD_VER | cut -d. -f3)
-          NEW_PATCH=$(awk "BEGIN {printf \"%.1f\", $PATCH+0.1}")
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$OLD_VER"
+          # round to 1 decimal to avoid floating point precision issues
+          NEW_PATCH=$(python -c "print(f'{float($PATCH)+0.1:.1f}')")
           NEW_VER="$MAJOR.$MINOR.$NEW_PATCH"
           echo "New version: $NEW_VER"
           sed -i "s/^version = \".*\"/version = \"$NEW_VER\"/" $VERSION_FILE
@@ -52,6 +53,6 @@ jobs:
 
       - name: Publish to PyPI
         env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_KEY }}
         run: python -m twine upload dist/*
